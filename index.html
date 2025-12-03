@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tarun Madaraboina | Salesforce Developer & Founder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #0f172a; }
+        
+        /* Smooth Scroll */
+        html { scroll-behavior: smooth; }
+
+        /* Chart Config */
+        .chart-container { position: relative; width: 100%; height: 350px; }
+
+        /* Custom Scrollbar */
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 20px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Chat Animations */
+        .msg-enter { animation: slideIn 0.3s ease-out forwards; opacity: 0; transform: translateY(10px); }
+        @keyframes slideIn { to { opacity: 1; transform: translateY(0); } }
+
+        /* AGENT CARD STYLING */
+        .agent-card {
+            display: grid;
+            grid-template-columns: 1fr;
+            overflow: hidden;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            background: white;
+            border: 1px solid #e2e8f0;
+            min-height: 500px;
+        }
+        @media (min-width: 1024px) {
+            .agent-card { grid-template-columns: 350px 1fr; }
+        }
+
+        .agent-left {
+            background-color: #0f172a;
+            padding: 2rem;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .agent-right {
+            background-color: white;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .prompt-btn {
+            text-align: left;
+            padding: 12px 16px;
+            margin-bottom: 12px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #e2e8f0;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .prompt-btn:hover { background: rgba(255, 255, 255, 0.15); border-color: rgba(255,255,255,0.3); }
+
+        /* TIMELINE STYLING */
+        .timeline-line {
+            position: absolute; left: 7px; top: 10px; bottom: 0; width: 2px; background-color: #e2e8f0;
+        }
+        .timeline-dot {
+            position: absolute; left: 0; top: 6px; width: 16px; height: 16px; border-radius: 50%; background-color: white; border: 4px solid;
+        }
+        .dot-blue { border-color: #3b82f6; }
+        .dot-gray { border-color: #94a3b8; }
+        .dot-green { border-color: #10b981; }
+
+        .tab-btn {
+            padding: 16px 24px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: #64748b;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .tab-btn.active { color: #2563eb; border-bottom-color: #2563eb; background-color: #f8fafc; }
+        .tab-btn:hover:not(.active) { color: #334155; }
+
+        /* Chips */
+        .suggestion-chip {
+            font-size: 0.75rem; padding: 6px 12px; background-color: #f1f5f9; color: #475569; border: 1px solid #e2e8f0;
+            border-radius: 9999px; cursor: pointer; transition: all 0.2s; white-space: nowrap; display: inline-block; margin-right: 6px; margin-bottom: 6px;
+        }
+        .suggestion-chip:hover { background-color: #dbeafe; color: #1e40af; border-color: #93c5fd; }
+
+        /* Chat Bubbles */
+        .chat-bubble { max-width: 85%; padding: 12px 16px; border-radius: 12px; font-size: 0.95rem; line-height: 1.5; }
+        .bubble-ai { background: #f8fafc; color: #334155; border: 1px solid #e2e8f0; }
+        .bubble-user { background: #2563eb; color: white; margin-left: auto; }
+
+        .mic-active { color: #ef4444; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+        
+        .animate-fade-in { animation: fadeIn 0.3s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="selection:bg-blue-100 selection:text-blue-900 pb-20">
+
+    <!-- API Key Modal -->
+    <div id="key-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full animate-fade-in">
+            <div class="text-center mb-6">
+                <div class="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-600 text-2xl">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                </div>
+                <h3 class="text-xl font-bold text-slate-900">Unlock Full Access</h3>
+                <p class="text-slate-500 text-sm mt-2">Enter your Gemini API Key to use the AI Agent, Fit Analyzer, and more.</p>
+            </div>
+            <input type="password" id="api-key-input" placeholder="Paste API Key (AIza...)" class="w-full px-4 py-3 border border-slate-300 rounded-xl mb-4 focus:ring-2 focus:ring-blue-500 outline-none text-sm transition">
+            <div class="bg-slate-50 p-3 rounded-lg border border-slate-100 text-center mb-6">
+                <p class="text-xs text-slate-500">
+                    Don't have one? <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-blue-600 font-bold hover:underline">Get a free key here</a>.
+                </p>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="closeModal()" class="flex-1 px-4 py-2.5 text-slate-600 hover:bg-slate-100 rounded-xl text-sm font-medium transition">Cancel</button>
+                <button onclick="saveKey()" class="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-semibold text-sm shadow-lg shadow-blue-500/30 transition">Activate</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <nav class="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <img src="https://media.licdn.com/dms/image/v2/D4E35AQG2SMeT_QqF7g/profile-framedphoto-shrink_400_400/B4EZnpHYyEIoAg-/0/1760552652187?e=1765350000&v=beta&t=4GrT9zPE-GXMBaSib-HuZR3G2UxCAnvOTDyZes3TmCc" alt="Tarun" class="w-10 h-10 rounded-xl object-cover shadow-sm border border-slate-200">
+                <div>
+                    <h1 class="font-bold text-slate-900 leading-tight">Tarun Madaraboina</h1>
+                    <p class="text-[11px] font-bold text-blue-600 uppercase tracking-wider">Salesforce Dev & Founder</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <span class="hidden md:inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <span class="w-2 h-2 bg-emerald-500 rounded-full mr-2 animate-pulse"></span> Available (CST)
+                </span>
+                <a href="mailto:madaraboinatarun@outlook.com" class="px-5 py-2 bg-slate-900 text-white text-sm font-medium rounded-full hover:bg-slate-800 transition shadow-lg shadow-slate-900/20">Contact Me</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
+
+        <!-- 1. AGENT SECTION -->
+        <section class="agent-card">
+            <div class="agent-left">
+                <div class="mb-8">
+                    <img src="https://media.licdn.com/dms/image/v2/D4E35AQG2SMeT_QqF7g/profile-framedphoto-shrink_400_400/B4EZnpHYyEIoAg-/0/1760552652187?e=1765350000&v=beta&t=4GrT9zPE-GXMBaSib-HuZR3G2UxCAnvOTDyZes3TmCc" class="w-20 h-20 rounded-full border-4 border-slate-800 shadow-xl mb-6 object-cover">
+                    <h2 class="text-3xl font-bold text-white mb-2">Recruiter Assistant</h2>
+                    <div class="inline-flex items-center gap-2 px-2 py-1 rounded bg-white/10 text-blue-300 text-xs font-medium border border-white/10 mb-4">
+                        <i class="fa-solid fa-sparkles"></i> Gemini AI
+                    </div>
+                    <p id="hero-bio" class="text-slate-400 text-sm leading-relaxed">I've trained this AI agent on my <strong>entire profile</strong>, including my corporate Salesforce wins and my journey building <em>YouthSportSite</em>.</p>
+                    <button onclick="remixBio()" class="mt-4 text-xs text-blue-400 hover:text-white transition flex items-center gap-2"><i class="fa-solid fa-wand-magic-sparkles"></i> Remix Bio Style</button>
+                </div>
+                <div>
+                    <button onclick="sendChatMessage('Why hire a Founder for a Dev role?')" class="prompt-btn w-full"><i class="fa-solid fa-rocket text-pink-400"></i> Why hire a Founder for a Dev role?</button>
+                    <button onclick="sendChatMessage('Summarize Salesforce integration experience')" class="prompt-btn w-full"><i class="fa-solid fa-laptop-code text-blue-400"></i> Summarize Integration Experience</button>
+                    <button onclick="sendChatMessage('Generate a 3-sentence elevator pitch')" class="prompt-btn w-full"><i class="fa-solid fa-wand-magic-sparkles text-yellow-400"></i> Generate Elevator Pitch</button>
+                </div>
+            </div>
+            <div class="agent-right">
+                <div id="chat-container" class="flex-grow p-6 overflow-y-auto custom-scroll space-y-4">
+                    <div class="chat-bubble bubble-ai">Hi! I'm Agent Tarun. Ask me about LWC, Apex, or my startup experience!</div>
+                </div>
+                <div id="suggestions-container" class="px-6 pb-2 min-h-[30px]"></div>
+                <div class="p-4 border-t border-slate-100">
+                    <div class="flex items-center gap-2 bg-white p-1 rounded-xl border border-slate-200 focus-within:border-blue-500 transition shadow-sm">
+                        <input type="text" id="chat-input" placeholder="Ask about LWC, Startups, or ROI..." class="flex-grow bg-transparent border-none outline-none text-sm text-slate-800 px-3 py-2">
+                        <button onclick="toggleVoice()" id="mic-btn" class="p-2 text-slate-400 hover:text-red-500 transition rounded-lg"><i class="fa-solid fa-microphone"></i></button>
+                        <button onclick="sendChatMessage()" id="send-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition">Ask</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. CHARTS SECTION -->
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
+                <h3 class="text-lg font-bold text-slate-900 mb-6">Technical Competency Map</h3>
+                <div class="chart-container"><canvas id="skillsChart"></canvas></div>
+            </div>
+            <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
+                <h3 class="text-lg font-bold text-slate-900 mb-6">Impact Distribution</h3>
+                <div class="chart-container"><canvas id="impactChart"></canvas></div>
+            </div>
+        </section>
+
+        <!-- 3. FEATURED PROJECTS (NEW SECTION) -->
+        <section>
+            <h3 class="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2"><i class="fa-solid fa-code-branch text-blue-500"></i> Featured Projects</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Project 1 -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition">
+                    <div class="h-2 bg-blue-600"></div>
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h4 class="text-lg font-bold text-slate-900">Unified Policy & Claims 360</h4>
+                                <p class="text-xs text-slate-500">Salesforce Enterprise Solution</p>
+                            </div>
+                            <span class="px-2 py-1 bg-blue-50 text-blue-700 text-xs font-bold rounded">LWC</span>
+                        </div>
+                        <p class="text-sm text-slate-600 mb-4">End-to-end policy issuance system. Built 'ClaimWizard' LWC reducing processing time by 35%. Integrated Stripe via REST APIs.</p>
+                        <button onclick="generateProjectDeepDive('UPC-360')" class="w-full py-2 bg-slate-50 hover:bg-blue-50 text-blue-600 text-xs font-semibold rounded-lg border border-blue-100 transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-microchip"></i> Generate Technical Deep Dive ✨
+                        </button>
+                        <div id="deep-dive-UPC-360" class="hidden mt-4 p-3 bg-slate-900 text-emerald-400 text-xs font-mono rounded-lg border border-slate-800"></div>
+                    </div>
+                </div>
+                <!-- Project 2 -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition">
+                    <div class="h-2 bg-emerald-500"></div>
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h4 class="text-lg font-bold text-slate-900">Intelligent Parking System</h4>
+                                <p class="text-xs text-slate-500">Full Stack IoT Application</p>
+                            </div>
+                            <span class="px-2 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded">MERN</span>
+                        </div>
+                        <p class="text-sm text-slate-600 mb-4">Cloud-native parking management. Real-time slot visibility using MongoDB aggregation pipelines and Express.js REST APIs.</p>
+                        <button onclick="generateProjectDeepDive('ParkingSystem')" class="w-full py-2 bg-slate-50 hover:bg-emerald-50 text-emerald-600 text-xs font-semibold rounded-lg border border-emerald-100 transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-server"></i> Generate Architecture Breakdown ✨
+                        </button>
+                        <div id="deep-dive-ParkingSystem" class="hidden mt-4 p-3 bg-slate-900 text-emerald-400 text-xs font-mono rounded-lg border border-slate-800"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. EXPERIENCE SECTION -->
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mt-8">
+            <div class="flex border-b border-slate-200">
+                <button onclick="switchTab('corp')" id="tab-corp" class="tab-btn w-1/2 justify-center active"><i class="fa-solid fa-building"></i> Corporate Experience</button>
+                <button onclick="switchTab('startup')" id="tab-startup" class="tab-btn w-1/2 justify-center"><i class="fa-solid fa-rocket"></i> Entrepreneurial Ventures</button>
+            </div>
+            <div class="p-8">
+                <div id="content-corp" class="relative pl-6 space-y-8 animate-fade-in">
+                    <div class="timeline-line"></div>
+                    <div class="relative">
+                        <div class="timeline-dot dot-blue"></div>
+                        <h4 class="text-lg font-bold text-slate-900">Salesforce Developer / Administrator</h4>
+                        <p class="text-sm text-blue-600 font-semibold mb-2">TCS | 2022 - 2023</p>
+                        <ul class="list-disc list-inside text-sm text-slate-600 space-y-1 ml-1">
+                            <li><strong>Integration Specialist:</strong> Connected Salesforce to Stripe/Fifth Third (REST/SOAP).</li>
+                            <li><strong>Optimization:</strong> Tuned SOQL queries to reduce API latency by 20%.</li>
+                            <li><strong>Builder:</strong> Created reusable LWCs improving UI efficiency by 30%.</li>
+                        </ul>
+                    </div>
+                    <div class="relative">
+                        <div class="timeline-dot dot-gray"></div>
+                        <h4 class="text-lg font-bold text-slate-900">Quality Assurance Engineer</h4>
+                        <p class="text-sm text-slate-500 font-semibold mb-2">TCS | 2019 - 2021</p>
+                        <ul class="list-disc list-inside text-sm text-slate-600 space-y-1 ml-1">
+                            <li>Automated 100+ test cases using Selenium/Python.</li>
+                            <li>Managed CI/CD deployments via Copado.</li>
+                        </ul>
+                    </div>
+                </div>
+                <div id="content-startup" class="relative pl-6 space-y-8 hidden animate-fade-in">
+                    <div class="timeline-line"></div>
+                    <div class="relative">
+                        <div class="timeline-dot dot-green"></div>
+                        <h4 class="text-lg font-bold text-slate-900">Co-Founder & Lead Developer</h4>
+                        <p class="text-sm text-emerald-600 font-semibold mb-2">YouthSportSite | Present</p>
+                        <div class="bg-emerald-50 border border-emerald-100 p-4 rounded-lg mb-4">
+                            <span class="text-xs font-bold text-emerald-800 uppercase block mb-2">Tech Stack</span>
+                            <div class="flex gap-2">
+                                <span class="px-2 py-1 bg-white rounded text-xs font-medium text-emerald-700 border border-emerald-100">React</span>
+                                <span class="px-2 py-1 bg-white rounded text-xs font-medium text-emerald-700 border border-emerald-100">Node.js</span>
+                                <span class="px-2 py-1 bg-white rounded text-xs font-medium text-emerald-700 border border-emerald-100">MongoDB</span>
+                            </div>
+                        </div>
+                        <p class="text-sm text-slate-600">Building a scalable platform for youth sports management. Provides deep insight into product lifecycle and database architecture.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. TOOLS GRID (5 items now) -->
+        <section>
+            <h3 class="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2"><i class="fa-solid fa-toolbox text-slate-400"></i> AI Tools</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                
+                <!-- Fit Analyzer -->
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col hover:border-blue-400 transition">
+                    <div class="flex items-center gap-3 mb-4"><div class="p-2 bg-blue-50 text-blue-600 rounded-lg"><i class="fa-solid fa-bullseye"></i></div><h4 class="font-bold text-slate-900">Fit Analyzer</h4></div>
+                    <textarea id="jd-input" class="w-full h-24 p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs resize-none outline-none focus:border-blue-500 mb-3" placeholder="Paste Job Description..."></textarea>
+                    <div id="fit-result" class="hidden mb-3 text-xs p-2 bg-green-50 text-green-700 rounded-lg font-medium"></div>
+                    <button onclick="analyzeFit()" id="analyze-btn" class="mt-auto w-full py-2 bg-white border border-slate-300 text-slate-700 font-semibold rounded-lg text-xs hover:bg-slate-50 transition">Analyze Match</button>
+                </div>
+
+                <!-- Outreach Drafter -->
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col hover:border-purple-400 transition">
+                    <div class="flex items-center gap-3 mb-4"><div class="p-2 bg-purple-50 text-purple-600 rounded-lg"><i class="fa-solid fa-envelope-open-text"></i></div><h4 class="font-bold text-slate-900">Email Drafter</h4></div>
+                    <input type="text" id="outreach-role" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-purple-500 mb-2" placeholder="Role Title">
+                    <input type="text" id="outreach-company" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-purple-500 mb-3" placeholder="Company Name">
+                    <div id="outreach-result" class="hidden flex-grow mb-3 text-xs p-2 bg-purple-50 text-purple-800 rounded-lg max-h-24 overflow-y-auto"></div>
+                    <button onclick="generateOutreach()" id="outreach-btn" class="mt-auto w-full py-2 bg-white border border-slate-300 text-slate-700 font-semibold rounded-lg text-xs hover:bg-slate-50 transition">Draft Email</button>
+                </div>
+
+                <!-- Value Estimator -->
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col hover:border-emerald-400 transition">
+                    <div class="flex items-center gap-3 mb-4"><div class="p-2 bg-emerald-50 text-emerald-600 rounded-lg"><i class="fa-solid fa-money-bill-trend-up"></i></div><h4 class="font-bold text-slate-900">Value Estimator</h4></div>
+                    <input type="text" id="value-city" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-emerald-500 mb-3" placeholder="Enter City (e.g., Dallas)">
+                    <div id="value-result" class="hidden flex-grow mb-3 text-xs p-2 bg-emerald-50 text-emerald-800 rounded-lg"></div>
+                    <button onclick="estimateValue()" id="value-btn" class="mt-auto w-full py-2 bg-white border border-slate-300 text-slate-700 font-semibold rounded-lg text-xs hover:bg-slate-50 transition">Estimate</button>
+                </div>
+
+                <!-- Simulator (RESTORED) -->
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col hover:border-indigo-400 transition">
+                    <div class="flex items-center gap-3 mb-4"><div class="p-2 bg-indigo-50 text-indigo-600 rounded-lg"><i class="fa-solid fa-gamepad"></i></div><h4 class="font-bold text-slate-900">Simulator</h4></div>
+                    <p class="text-xs text-slate-500 mb-3">Test technical knowledge with AI questions.</p>
+                    <div id="sim-area" class="flex-grow flex items-center justify-center text-center p-2 mb-3 bg-slate-50 rounded border border-slate-100 min-h-[80px]">
+                        <p class="text-slate-400 text-xs italic">Ready?</p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 mt-auto">
+                        <button onclick="generateQuestion()" id="sim-gen-btn" class="py-2 bg-indigo-50 text-indigo-700 text-xs font-bold rounded hover:bg-indigo-100 transition">New</button>
+                        <button onclick="revealAnswer()" id="sim-rev-btn" disabled class="py-2 bg-slate-50 text-slate-400 text-xs font-bold rounded disabled:cursor-not-allowed">Reveal</button>
+                    </div>
+                </div>
+
+                <!-- Code Studio (Moved to 5th slot or just remove if too cluttered? No, keeping 5 items in flexible grid) -->
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col hover:border-orange-400 transition md:col-span-2 lg:col-span-4">
+                    <div class="flex items-center gap-3 mb-4"><div class="p-2 bg-orange-50 text-orange-600 rounded-lg"><i class="fa-solid fa-code"></i></div><h4 class="font-bold text-slate-900">Code Studio</h4></div>
+                    <div class="flex gap-2 mb-3">
+                        <button onclick="generateCode('Apex Trigger')" class="py-1.5 px-3 bg-slate-50 text-slate-600 text-xs font-bold rounded border hover:bg-orange-50 hover:text-orange-600 transition">Apex Trigger</button>
+                        <button onclick="generateCode('LWC JS')" class="py-1.5 px-3 bg-slate-50 text-slate-600 text-xs font-bold rounded border hover:bg-orange-50 hover:text-orange-600 transition">LWC JS</button>
+                        <button onclick="generateCode('Node API')" class="py-1.5 px-3 bg-slate-50 text-slate-600 text-xs font-bold rounded border hover:bg-orange-50 hover:text-orange-600 transition">Node API</button>
+                    </div>
+                    <div id="code-display" class="bg-slate-900 text-emerald-400 p-3 rounded-lg text-xs font-mono overflow-auto h-24 opacity-80">// Select a template to generate representative code...</div>
+                </div>
+
+            </div>
+        </section>
+
+        <footer class="text-center text-slate-400 text-xs mt-12">
+            <p>&copy; 2024 Tarun Madaraboina. Built with Tailwind CSS & Gemini AI.</p>
+        </footer>
+
+    </main>
+
+    <!-- JS Logic -->
+    <script>
+        // CONFIG
+        let apiKey = localStorage.getItem('tarun_gemini_key') || "";
+        let pendingAction = null;
+        let recognition = null;
+        let originalBio = "";
+        let curSimAnswer = "";
+
+        const resumeContext = `
+        CANDIDATE: Tarun Madaraboina
+        ROLES: Salesforce Developer (Primary), Co-Founder (YouthSportSite)
+        LOCATION: Dallas, TX (Open to CST/Remote)
+        EXPERIENCE: 4+ Years
+        
+        KEY HIGHLIGHTS:
+        1. TCS (Corp): Integrated Stripe/Fifth Third (100% auto), Reduced errors 40% (Flows), 30% UI boost (LWC).
+        2. YouthSportSite (Founder): Building React/Node/Mongo app for youth sports.
+        3. Skills: Apex, LWC, REST/SOAP, Copado, React, Node.js.
+        `;
+
+        // CHARTS INIT (Matches Image 3)
+        document.addEventListener('DOMContentLoaded', () => {
+            originalBio = document.getElementById('hero-bio').innerHTML;
+
+            // Radar Chart
+            new Chart(document.getElementById('skillsChart'), {
+                type: 'radar',
+                data: {
+                    labels: ['Apex/Salesforce', 'LWC/React', 'Database Design', 'Integrations', 'Product Strategy', 'DevOps'],
+                    datasets: [{
+                        label: 'Proficiency',
+                        data: [95, 85, 80, 90, 75, 80],
+                        fill: true,
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderColor: '#3b82f6',
+                        pointBackgroundColor: '#3b82f6',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: '#3b82f6'
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    scales: { r: { ticks: { display: false, backdropColor: 'transparent' }, grid: { color: 'rgba(0,0,0,0.05)' }, angleLines: { color: 'rgba(0,0,0,0.05)' } } },
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            // Bar Chart (Multi-colored)
+            new Chart(document.getElementById('impactChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['Error Reduction', 'UI Speed', 'API Performance', 'Testing Coverage'],
+                    datasets: [{
+                        label: 'Improvement %',
+                        data: [40, 30, 20, 85],
+                        backgroundColor: ['#3b82f6', '#10b981', '#6366f1', '#8b5cf6'],
+                        borderRadius: 6,
+                        barPercentage: 0.6
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } }, x: { grid: { display: false } } }
+                }
+            });
+
+            document.getElementById('chat-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') sendChatMessage(); });
+        });
+
+        // API & AUTH
+        function showModal(action) { pendingAction = action; document.getElementById('key-modal').classList.remove('hidden'); }
+        function closeModal() { document.getElementById('key-modal').classList.add('hidden'); pendingAction = null; }
+        function saveKey() {
+            const val = document.getElementById('api-key-input').value.trim();
+            if(val) { apiKey = val; localStorage.setItem('tarun_gemini_key', val); closeModal(); if(pendingAction) pendingAction(); }
+            else alert("Enter a key.");
+        }
+
+        async function callGemini(prompt, sys) {
+            if(!apiKey) { showModal(() => location.reload()); return null; }
+            try {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ contents: [{parts:[{text: prompt}]}], systemInstruction: {parts:[{text: sys}]} })
+                });
+                if(!res.ok) throw new Error("API_FAIL");
+                const data = await res.json();
+                return data.candidates?.[0]?.content?.parts?.[0]?.text;
+            } catch(e) { 
+                if(apiKey) { alert("Invalid Key. Please update."); localStorage.removeItem('tarun_gemini_key'); apiKey=""; }
+                return null;
+            }
+        }
+
+        // TABS (Matches Image 2)
+        function switchTab(id) {
+            document.getElementById('content-corp').classList.add('hidden');
+            document.getElementById('content-startup').classList.add('hidden');
+            document.getElementById('tab-corp').classList.remove('active');
+            document.getElementById('tab-startup').classList.remove('active');
+            
+            document.getElementById(`content-${id}`).classList.remove('hidden');
+            document.getElementById(`tab-${id}`).classList.add('active');
+        }
+
+        // CHAT LOGIC (With Chips & TTS)
+        async function sendChatMessage(txtOverride) {
+            const inp = document.getElementById('chat-input');
+            const txt = txtOverride || inp.value.trim();
+            const suggestionsBox = document.getElementById('suggestions-container');
+            
+            if(!txt) return;
+            if(!apiKey) { showModal(() => sendChatMessage(txt)); return; }
+
+            const box = document.getElementById('chat-container');
+            box.innerHTML += `<div class="flex justify-end msg-enter"><div class="chat-bubble bubble-user">${txt}</div></div>`;
+            inp.value = ''; suggestionsBox.innerHTML = ''; box.scrollTop = box.scrollHeight;
+
+            const res = await callGemini(txt, `You are Tarun's Assistant. Context: ${resumeContext}. 
+            Output JSON ONLY: { "answer": "text response", "suggestions": ["short follow-up 1", "short follow-up 2", "short follow-up 3"] }`);
+            
+            if(res) {
+                try {
+                    const cleanRes = res.replace(/```json/g,'').replace(/```/g,'');
+                    const data = JSON.parse(cleanRes);
+                    const escapedText = data.answer.replace(/"/g, '&quot;').replace(/'/g, "\\'");
+                    
+                    box.innerHTML += `
+                        <div class="flex justify-start msg-enter">
+                            <div class="chat-bubble bubble-ai group">
+                                ${data.answer}
+                                <button onclick="speakText('${escapedText}')" class="absolute top-2 right-2 text-slate-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition" title="Read Aloud">
+                                    <i class="fa-solid fa-volume-high"></i>
+                                </button>
+                            </div>
+                        </div>`;
+                    
+                    if(data.suggestions) {
+                        data.suggestions.forEach(sug => {
+                            suggestionsBox.innerHTML += `<button onclick="sendChatMessage('${sug}')" class="suggestion-chip animate-fade-in">${sug}</button>`;
+                        });
+                    }
+                } catch(e) {
+                     box.innerHTML += `<div class="chat-message chat-ai animate-fade-in">${res}</div>`;
+                }
+            }
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function speakText(text) {
+            window.speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(text);
+            window.speechSynthesis.speak(u);
+        }
+
+        // TOOLS
+        async function remixBio() {
+            if(!apiKey) { showModal(() => remixBio()); return; }
+            const bioEl = document.getElementById('hero-bio');
+            bioEl.innerHTML = '<span class="animate-pulse text-blue-400">✨ Rewriting...</span>';
+            const res = await callGemini("Rewrite bio", `Rewrite this bio in a Visionary Founder tone: "${originalBio}". Keep it 2 sentences.`);
+            if(res) bioEl.innerText = res; else bioEl.innerHTML = originalBio;
+        }
+
+        async function analyzeFit() {
+            if(!apiKey) { showModal(() => analyzeFit()); return; }
+            const jd = document.getElementById('jd-input').value;
+            const btn = document.getElementById('analyze-btn');
+            if(!jd) return;
+            btn.innerText = "Analyzing..."; btn.disabled = true;
+            const res = await callGemini(jd, `Compare Tarun (${resumeContext}) to JD. JSON ONLY: {"score": number, "txt": "summary"}`);
+            if(res) {
+                try {
+                    const data = JSON.parse(res.replace(/```json/g,'').replace(/```/g,''));
+                    const r = document.getElementById('fit-result');
+                    r.classList.remove('hidden');
+                    r.innerHTML = `<strong>${data.score}% Match:</strong> ${data.txt}`;
+                } catch(e){}
+            }
+            btn.innerText = "Analyze Match"; btn.disabled = false;
+        }
+
+        async function generateOutreach() {
+            if(!apiKey) { showModal(() => generateOutreach()); return; }
+            const role = document.getElementById('outreach-role').value;
+            const company = document.getElementById('outreach-company').value;
+            const btn = document.getElementById('outreach-btn');
+            if(!role || !company) return;
+            btn.innerText = "Drafting..."; btn.disabled = true;
+            const res = await callGemini(`Draft email`, `Write a short recruiting email from ${company} to Tarun for a ${role} position. Mention his value from: ${resumeContext}.`);
+            if(res) {
+                const r = document.getElementById('outreach-result');
+                r.classList.remove('hidden'); r.innerText = res;
+            }
+            btn.innerText = "Draft Email"; btn.disabled = false;
+        }
+
+        async function estimateValue() {
+            if(!apiKey) { showModal(() => estimateValue()); return; }
+            const city = document.getElementById('value-city').value;
+            if(!city) return;
+            const res = await callGemini(`Value in ${city}`, `Estimate salary range for Tarun (${resumeContext}) in ${city}. Mention 'Founder Premium'. Short.`);
+            if(res) {
+                const r = document.getElementById('value-result');
+                r.classList.remove('hidden'); r.innerText = res;
+            }
+        }
+
+        async function generateCode(type) {
+            if(!apiKey) { showModal(() => generateCode(type)); return; }
+            const box = document.getElementById('code-display');
+            box.innerText = "Generating...";
+            const res = await callGemini(type, `Generate concise ${type} snippet based on Tarun's skills. No markdown.`);
+            if(res) box.innerText = res;
+        }
+
+        // NEW: PROJECT DEEP DIVE
+        async function generateProjectDeepDive(project) {
+            if(!apiKey) { showModal(() => generateProjectDeepDive(project)); return; }
+            const box = document.getElementById(`deep-dive-${project}`);
+            box.classList.remove('hidden');
+            box.innerText = "Analyzing Architecture...";
+            
+            const sys = `Generate a STAR method case study for project: ${project}. Resume Context: ${resumeContext}. Focus on technical challenges and architecture.`;
+            const res = await callGemini("Deep Dive", sys);
+            if(res) box.innerText = res;
+        }
+
+        // NEW: SIMULATOR
+        async function generateQuestion() {
+            if(!apiKey) { showModal(() => generateQuestion()); return; }
+            const area = document.getElementById('sim-area');
+            const btn = document.getElementById('sim-gen-btn');
+            btn.textContent = "..."; btn.disabled = true;
+            
+            const res = await callGemini("Gen", `Hard Salesforce Q. JSON ONLY: {"q": "question", "a": "answer"}`);
+            if(res) {
+                try {
+                    const data = JSON.parse(res.replace(/```json/g,'').replace(/```/g,''));
+                    area.innerHTML = `<p class="font-bold text-xs text-slate-800">"${data.q}"</p>`;
+                    curSimAnswer = data.a;
+                    const revBtn = document.getElementById('sim-rev-btn');
+                    revBtn.disabled = false;
+                    revBtn.classList.remove('bg-slate-50', 'text-slate-400', 'disabled:cursor-not-allowed');
+                    revBtn.classList.add('bg-indigo-600', 'text-white', 'hover:bg-indigo-700');
+                } catch(e){}
+            }
+            btn.textContent = "New"; btn.disabled = false;
+        }
+
+        function revealAnswer() {
+            document.getElementById('sim-area').innerHTML += `<div class="mt-2 pt-2 border-t border-slate-200 text-emerald-600 text-xs text-left"><strong>A:</strong> ${curSimAnswer}</div>`;
+            const revBtn = document.getElementById('sim-rev-btn');
+            revBtn.disabled = true;
+            revBtn.classList.add('bg-slate-50', 'text-slate-400', 'disabled:cursor-not-allowed');
+            revBtn.classList.remove('bg-indigo-600', 'text-white', 'hover:bg-indigo-700');
+        }
+
+        function toggleVoice() {
+            if (!('webkitSpeechRecognition' in window)) { alert("Use Chrome."); return; }
+            if (recognition) { recognition.stop(); return; }
+            recognition = new webkitSpeechRecognition();
+            recognition.lang = 'en-US';
+            const btn = document.getElementById('mic-btn');
+            btn.classList.add('mic-active');
+            recognition.onresult = (e) => {
+                document.getElementById('chat-input').value = e.results[0][0].transcript;
+                sendChatMessage();
+                btn.classList.remove('mic-active');
+                recognition = null;
+            };
+            recognition.start();
+        }
+    </script>
+</body>
+</html>
